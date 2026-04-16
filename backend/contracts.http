@@ -1,0 +1,45 @@
+### Pull gacha
+POST https://api.example.com/api/gacha/pull
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
+
+{
+  "bannerTag": "season1-global",
+  "cost": 160
+}
+
+### Resolve downed character (use soul stone)
+POST https://api.example.com/api/roster/{{characterId}}/revive
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Idempotency-Key: {{$guid}}
+
+{
+  "consumeSoulStone": true
+}
+
+### Finalize permadeath (system or admin-triggered worker)
+POST https://api.example.com/internal/permadeath/finalize
+Content-Type: application/json
+X-Internal-Key: {{internalKey}}
+
+{
+  "nowUtc": "2026-04-16T00:00:00Z"
+}
+
+### Get live pool top rarity
+GET https://api.example.com/api/pool/live?minRarity=8
+Authorization: Bearer {{token}}
+
+### Matchmaking queue
+POST https://api.example.com/api/matchmaking/enqueue
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "teamCharacterIds": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ]
+}
