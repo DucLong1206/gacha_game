@@ -1,43 +1,67 @@
-### Pull gacha
-POST https://api.example.com/api/gacha/pull
+@baseUrl = http://localhost:5000
+@userA = 11111111-1111-1111-1111-111111111111
+@userB = 22222222-2222-2222-2222-222222222222
+
+### 0) Seed demo data
+POST {{baseUrl}}/api/dev/seed
+
+### 1) Pull gacha
+POST {{baseUrl}}/api/gacha/pull
 Content-Type: application/json
-Authorization: Bearer {{token}}
-Idempotency-Key: {{$guid}}
 
 {
+  "userId": "{{userA}}",
   "bannerTag": "season1-global",
-  "cost": 160
+  "cost": 160,
+  "idempotencyKey": "pull-001"
 }
 
-### Resolve downed character (use soul stone)
-POST https://api.example.com/api/roster/{{characterId}}/revive
+### 2) Pull gacha replay with same idempotency key (should return same result)
+POST {{baseUrl}}/api/gacha/pull
 Content-Type: application/json
-Authorization: Bearer {{token}}
-Idempotency-Key: {{$guid}}
 
 {
+  "userId": "{{userA}}",
+  "bannerTag": "season1-global",
+  "cost": 160,
+  "idempotencyKey": "pull-001"
+}
+
+### 3) Get live pool with rarity >= 8
+GET {{baseUrl}}/api/pool/live?minRarity=8
+
+### 4) Mark character downed (replace characterId from pull response)
+POST {{baseUrl}}/api/roster/00000000-0000-0000-0000-000000000000/downed
+Content-Type: application/json
+
+{
+  "userId": "{{userA}}",
+  "secondsToRevive": 120
+}
+
+### 5) Revive character by Soul Stone (replace characterId)
+POST {{baseUrl}}/api/roster/00000000-0000-0000-0000-000000000000/revive
+Content-Type: application/json
+
+{
+  "userId": "{{userA}}",
   "consumeSoulStone": true
 }
 
-### Finalize permadeath (system or admin-triggered worker)
-POST https://api.example.com/internal/permadeath/finalize
+### 6) Finalize permadeath by worker
+POST {{baseUrl}}/api/internal/permadeath/finalize
 Content-Type: application/json
-X-Internal-Key: {{internalKey}}
 
 {
   "nowUtc": "2026-04-16T00:00:00Z"
 }
 
-### Get live pool top rarity
-GET https://api.example.com/api/pool/live?minRarity=8
-Authorization: Bearer {{token}}
-
-### Matchmaking queue
-POST https://api.example.com/api/matchmaking/enqueue
+### 7) Enqueue matchmaking
+POST {{baseUrl}}/api/matchmaking/enqueue
 Content-Type: application/json
-Authorization: Bearer {{token}}
 
 {
+  "userId": "{{userA}}",
   "teamCharacterIds": [
     "00000000-0000-0000-0000-000000000001",
     "00000000-0000-0000-0000-000000000002"
