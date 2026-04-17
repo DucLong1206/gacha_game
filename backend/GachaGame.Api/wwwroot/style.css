@@ -1,0 +1,18 @@
+:root { color-scheme: dark; }
+body { font-family: Inter, Arial, sans-serif; margin: 0; background: #10131a; color: #e8ecf1; }
+header { padding: 20px; background: #1a2130; border-bottom: 1px solid #2d3b55; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+.card { background: #171d28; border: 1px solid #2f3d57; border-radius: 12px; padding: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button { background: #3b82f6; border: none; color: #fff; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+button:hover { opacity: .92; }
+input, select { background: #0f1520; color: #ecf2ff; border: 1px solid #3b4b69; border-radius: 8px; padding: 8px; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.list li { background: #0f1520; border: 1px solid #2d3a53; border-radius: 8px; padding: 8px; }
+.muted { color: #99a8c0; }
+.stats { margin-top: 8px; color: #b9c8df; }
+.win { color: #4ade80; }
+.lose { color: #fb7185; }
+.unique { color: #fbbf24; font-weight: 700; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }

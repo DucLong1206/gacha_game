@@ -1,29 +1,37 @@
 # Gacha Chiến Đấu "Độc Bản & Tuyệt Diệt"
 
-Repo này đã được nâng từ tài liệu sang **code backend chạy được** (ASP.NET Core Minimal API).
+Mình đã hoàn thành bản **có view + có thể chơi được** ở mức MVP.
 
-## Đã triển khai
-- API quay gacha atomic (lock theo service + idempotency key).
-- Pool toàn cục không trùng (nhân vật quay trúng sẽ rời pool).
-- Cơ chế downed -> revive bằng Soul Stone -> permadeath finalize.
-- API live pool và matchmaking queue score-based.
-- SignalR Hub để broadcast cập nhật pool/nhân vật hồi sinh.
+## Bạn có gì ngay bây giờ?
+- ✅ Web UI tại `/` để chơi trực tiếp (seed, quay gacha, battle, revive, finalize permadeath).
+- ✅ Backend ASP.NET Core Minimal API cho toàn bộ gameplay loop chính.
+- ✅ Cơ chế global unique pool, idempotent pull, downed/revive/permadeath, matchmaking score.
 
 ## Cấu trúc
-- `backend/GachaGame.Api/Program.cs`: toàn bộ implementation API + domain + service in-memory.
-- `backend/GachaGame.Api/GachaGame.Api.csproj`: project .NET 8 web.
-- `backend/contracts.http`: bộ request mẫu để test thủ công.
-- `database/schema.sql`: schema SQL Server cho bước nâng cấp persistence production.
+- `backend/GachaGame.Api/Program.cs`: API + service + logic gameplay.
+- `backend/GachaGame.Api/wwwroot/index.html`: giao diện chơi game.
+- `backend/GachaGame.Api/wwwroot/app.js`: luồng tương tác gameplay.
+- `backend/GachaGame.Api/wwwroot/style.css`: style UI.
+- `backend/contracts.http`: request mẫu test API.
+- `database/schema.sql`: schema SQL Server cho production.
 
-## Chạy local
+## Chạy game local
 ```bash
 cd backend/GachaGame.Api
 dotnet restore
 dotnet run
 ```
 
-Sau đó dùng file `backend/contracts.http` để gọi API.
+Sau đó mở trình duyệt vào: `http://localhost:5000/`
+
+## Loop chơi nhanh
+1. Bấm **Seed Demo Data**.
+2. Chọn user.
+3. **Quay gacha** lấy tướng.
+4. Vào **Battle Arena** đánh trận.
+5. Nếu bị downed: dùng **Soul Stone** để revive.
+6. Nếu không revive và bấm finalize: nhân vật sẽ mất vĩnh viễn và quay lại pool.
 
 ## Ghi chú
-- Bản hiện tại dùng in-memory store để dễ validate logic nhanh.
-- Khi đi production: thay `GameStore` bằng repository SQL Server + Redis lock/distributed cache theo tài liệu trong `docs/architecture.md`.
+- Bản hiện tại dùng in-memory để bạn test gameplay thật nhanh.
+- Bước tiếp theo có thể tách service/repository và gắn SQL Server + Redis + SignalR production scaling.

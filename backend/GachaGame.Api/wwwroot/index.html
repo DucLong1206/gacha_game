@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gacha Chiến Đấu - Độc Bản & Tuyệt Diệt</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>⚔️ Gacha Chiến Đấu: Độc Bản & Tuyệt Diệt</h1>
+    <p>Seed dữ liệu, quay tướng độc bản, đưa vào trận và đối mặt permadeath.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>1) Khởi tạo game</h2>
+      <button id="seedBtn">Seed Demo Data</button>
+      <div id="seedMsg" class="muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>2) Chọn người chơi</h2>
+      <select id="userSelect"></select>
+      <div id="userStats" class="stats"></div>
+    </section>
+
+    <section class="card">
+      <h2>3) Gacha Altar</h2>
+      <div class="row">
+        <input id="costInput" type="number" value="160" min="1" />
+        <button id="pullBtn">Quay 1 lần</button>
+      </div>
+      <div id="pullMsg"></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card">
+        <h2>4) Đội hình của bạn</h2>
+        <ul id="rosterList" class="list"></ul>
+      </div>
+      <div class="card">
+        <h2>5) Pool hiếm (8-10★)</h2>
+        <ul id="poolList" class="list"></ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>6) Battle Arena</h2>
+      <div class="row">
+        <select id="battleCharacter"></select>
+        <select id="difficulty">
+          <option value="normal">Normal</option>
+          <option value="hard">Hard</option>
+          <option value="nightmare">Nightmare</option>
+        </select>
+        <button id="fightBtn">Chiến đấu</button>
+      </div>
+      <div id="battleMsg"></div>
+    </section>
+
+    <section class="card">
+      <h2>7) Hồi sinh & Permadeath</h2>
+      <div class="row">
+        <select id="reviveCharacter"></select>
+        <button id="reviveBtn">Dùng Soul Stone hồi sinh</button>
+        <button id="finalizeBtn">Finalize Permadeath</button>
+      </div>
+      <div id="lifeMsg"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

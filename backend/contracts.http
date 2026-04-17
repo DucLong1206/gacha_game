@@ -1,11 +1,15 @@
 @baseUrl = http://localhost:5000
 @userA = 11111111-1111-1111-1111-111111111111
 @userB = 22222222-2222-2222-2222-222222222222
+@characterId = 00000000-0000-0000-0000-000000000000
 
-### 0) Seed demo data
+### 0) Seed dữ liệu demo
 POST {{baseUrl}}/api/dev/seed
 
-### 1) Pull gacha
+### 1) Lấy danh sách user
+GET {{baseUrl}}/api/users
+
+### 2) Quay gacha
 POST {{baseUrl}}/api/gacha/pull
 Content-Type: application/json
 
@@ -16,31 +20,24 @@ Content-Type: application/json
   "idempotencyKey": "pull-001"
 }
 
-### 2) Pull gacha replay with same idempotency key (should return same result)
-POST {{baseUrl}}/api/gacha/pull
-Content-Type: application/json
+### 3) Xem roster user
+GET {{baseUrl}}/api/roster/{{userA}}
 
-{
-  "userId": "{{userA}}",
-  "bannerTag": "season1-global",
-  "cost": 160,
-  "idempotencyKey": "pull-001"
-}
-
-### 3) Get live pool with rarity >= 8
+### 4) Xem pool hiếm còn lại
 GET {{baseUrl}}/api/pool/live?minRarity=8
 
-### 4) Mark character downed (replace characterId from pull response)
-POST {{baseUrl}}/api/roster/00000000-0000-0000-0000-000000000000/downed
+### 5) Đánh trận (đổi characterId theo roster)
+POST {{baseUrl}}/api/battle/fight
 Content-Type: application/json
 
 {
   "userId": "{{userA}}",
-  "secondsToRevive": 120
+  "characterId": "{{characterId}}",
+  "difficulty": "hard"
 }
 
-### 5) Revive character by Soul Stone (replace characterId)
-POST {{baseUrl}}/api/roster/00000000-0000-0000-0000-000000000000/revive
+### 6) Hồi sinh bằng Soul Stone
+POST {{baseUrl}}/api/roster/{{characterId}}/revive
 Content-Type: application/json
 
 {
@@ -48,22 +45,10 @@ Content-Type: application/json
   "consumeSoulStone": true
 }
 
-### 6) Finalize permadeath by worker
+### 7) Finalize permadeath
 POST {{baseUrl}}/api/internal/permadeath/finalize
 Content-Type: application/json
 
 {
-  "nowUtc": "2026-04-16T00:00:00Z"
-}
-
-### 7) Enqueue matchmaking
-POST {{baseUrl}}/api/matchmaking/enqueue
-Content-Type: application/json
-
-{
-  "userId": "{{userA}}",
-  "teamCharacterIds": [
-    "00000000-0000-0000-0000-000000000001",
-    "00000000-0000-0000-0000-000000000002"
-  ]
+  "nowUtc": "2026-04-17T00:00:00Z"
 }

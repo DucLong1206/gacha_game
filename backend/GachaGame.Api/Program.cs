@@ -7,8 +7,12 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<GameStore>();
 builder.Services.AddSingleton<GachaService>();
 builder.Services.AddSingleton<MatchmakingService>();
+builder.Services.AddSingleton<BattleService>();
 
 var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.MapGet("/health", () => Results.Ok(new { ok = true, utc = DateTime.UtcNow }));
 
@@ -16,6 +20,34 @@ app.MapPost("/api/dev/seed", (GameStore store) =>
 {
     store.SeedDemoData();
     return Results.Ok(new { message = "Seeded demo data" });
+});
+
+app.MapGet("/api/users", (GameStore store) => Results.Ok(store.Users.Values.OrderBy(x => x.UserName)));
+
+app.MapGet("/api/users/{userId:guid}", (Guid userId, GameStore store) =>
+    store.Users.TryGetValue(userId, out var user)
+        ? Results.Ok(user)
+        : Results.NotFound(new { message = "User not found" }));
+
+app.MapGet("/api/roster/{userId:guid}", (Guid userId, GameStore store) =>
+{
+    var roster = store.InventoryByCharacter.Values
+        .Where(x => x.UserId == userId)
+        .Join(store.Characters.Values,
+            inv => inv.CharacterId,
+            c => c.CharacterId,
+            (inv, c) => new RosterItemDto(
+                c.CharacterId,
+                c.Name,
+                c.Rarity,
+                c.IsUnique,
+                inv.CurrentHp,
+                inv.IsDowned,
+                inv.DownedExpireAtUtc))
+        .OrderByDescending(x => x.Rarity)
+        .ToList();
+
+    return Results.Ok(roster);
 });
 
 app.MapPost("/api/gacha/pull", async (PullRequest request, GachaService service, CancellationToken ct) =>
@@ -75,6 +107,12 @@ app.MapPost("/api/internal/permadeath/finalize", (FinalizePermadeathRequest requ
     var now = request.NowUtc ?? DateTime.UtcNow;
     var finalized = service.FinalizePermadeath(now);
     return Results.Ok(new { message = "Permadeath finalized", count = finalized, nowUtc = now });
+});
+
+app.MapPost("/api/battle/fight", async (BattleRequest request, BattleService service, CancellationToken ct) =>
+{
+    var result = await service.FightAsync(request, ct);
+    return result.IsSuccess ? Results.Ok(result) : Results.BadRequest(result);
 });
 
 app.MapPost("/api/matchmaking/enqueue", (MatchmakingRequest request, MatchmakingService service, GameStore store) =>
@@ -174,8 +212,22 @@ public sealed class GameStore
         InventoryByCharacter.Clear();
         TransactionsByIdempotency.Clear();
 
-        var userA = new User { UserId = Guid.Parse("11111111-1111-1111-1111-111111111111"), UserName = "long", PremiumCurrency = 5000, SoulStone = 2 };
-        var userB = new User { UserId = Guid.Parse("22222222-2222-2222-2222-222222222222"), UserName = "linh", PremiumCurrency = 5000, SoulStone = 1 };
+        var userA = new User
+        {
+            UserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            UserName = "Long",
+            PremiumCurrency = 5000,
+            SoulStone = 2
+        };
+
+        var userB = new User
+        {
+            UserId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            UserName = "Linh",
+            PremiumCurrency = 5000,
+            SoulStone = 1
+        };
+
         Users.TryAdd(userA.UserId, userA);
         Users.TryAdd(userB.UserId, userB);
 
@@ -185,7 +237,9 @@ public sealed class GameStore
             new Character { CharacterId = Guid.NewGuid(), Name = "Mercenary B", Rarity = 3, IsUnique = false, BaseHp = 1050, BaseAtk = 110, BaseDef = 60 },
             new Character { CharacterId = Guid.NewGuid(), Name = "General Kaito", Rarity = 6, IsUnique = false, BaseHp = 1800, BaseAtk = 240, BaseDef = 150 },
             new Character { CharacterId = Guid.NewGuid(), Name = "Astra The Void", Rarity = 9, IsUnique = true, BaseHp = 2400, BaseAtk = 330, BaseDef = 210 },
-            new Character { CharacterId = Guid.NewGuid(), Name = "Ragnar 0", Rarity = 10, IsUnique = true, BaseHp = 3000, BaseAtk = 420, BaseDef = 260 }
+            new Character { CharacterId = Guid.NewGuid(), Name = "Ragnar 0", Rarity = 10, IsUnique = true, BaseHp = 3000, BaseAtk = 420, BaseDef = 260 },
+            new Character { CharacterId = Guid.NewGuid(), Name = "Miko Blader", Rarity = 5, IsUnique = false, BaseHp = 1600, BaseAtk = 190, BaseDef = 120 },
+            new Character { CharacterId = Guid.NewGuid(), Name = "Titan Brute", Rarity = 7, IsUnique = false, BaseHp = 2200, BaseAtk = 260, BaseDef = 180 }
         };
 
         foreach (var c in roster)
@@ -387,6 +441,107 @@ public sealed class GachaService
         };
 }
 
+public sealed class BattleService
+{
+    private readonly GameStore _store;
+    private readonly IHubContext<GameHub> _hub;
+
+    public BattleService(GameStore store, IHubContext<GameHub> hub)
+    {
+        _store = store;
+        _hub = hub;
+    }
+
+    public async Task<BattleResult> FightAsync(BattleRequest request, CancellationToken ct)
+    {
+        if (!_store.InventoryByCharacter.TryGetValue(request.CharacterId, out var inventory) || inventory.UserId != request.UserId)
+        {
+            return BattleResult.Fail("Character not found in your roster.");
+        }
+
+        if (inventory.IsDowned)
+        {
+            return BattleResult.Fail("Character is downed, revive first.");
+        }
+
+        if (!_store.Characters.TryGetValue(request.CharacterId, out var character))
+        {
+            return BattleResult.Fail("Character metadata missing.");
+        }
+
+        var enemyPower = request.Difficulty switch
+        {
+            "hard" => Random.Shared.Next(1500, 2600),
+            "nightmare" => Random.Shared.Next(2400, 3800),
+            _ => Random.Shared.Next(800, 1800)
+        };
+
+        var heroPower = character.BaseAtk * 2 + character.BaseDef + inventory.CurrentHp / 4;
+        var swing = Random.Shared.Next(-200, 201);
+        var finalHero = heroPower + swing;
+
+        if (finalHero >= enemyPower)
+        {
+            var damage = Random.Shared.Next(80, 260);
+            inventory.CurrentHp = Math.Max(1, inventory.CurrentHp - damage);
+
+            var reward = request.Difficulty switch
+            {
+                "hard" => 220,
+                "nightmare" => 380,
+                _ => 120
+            };
+
+            if (_store.Users.TryGetValue(request.UserId, out var user))
+            {
+                user.PremiumCurrency += reward;
+            }
+
+            await _hub.Clients.User(request.UserId.ToString()).SendAsync("BattleResolved", new
+            {
+                request.CharacterId,
+                result = "win",
+                hp = inventory.CurrentHp,
+                reward
+            }, ct);
+
+            return BattleResult.Success(
+                "WIN",
+                $"{character.Name} đã thắng! Nhận {reward} gem.",
+                inventory.CurrentHp,
+                reward,
+                false,
+                null);
+        }
+
+        inventory.CurrentHp = 0;
+        inventory.IsDowned = true;
+        inventory.DownedExpireAtUtc = DateTime.UtcNow.AddSeconds(120);
+
+        if (_store.Pool.TryGetValue(request.CharacterId, out var pool))
+        {
+            pool.Status = PoolStatus.Downed;
+            pool.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await _hub.Clients.User(request.UserId.ToString()).SendAsync("BattleResolved", new
+        {
+            request.CharacterId,
+            result = "downed",
+            hp = 0,
+            downedExpireAtUtc = inventory.DownedExpireAtUtc
+        }, ct);
+
+        return BattleResult.Success(
+            "DOWNED",
+            $"{character.Name} bị hạ gục. Hồi sinh trong 120s hoặc sẽ mất vĩnh viễn.",
+            0,
+            0,
+            true,
+            inventory.DownedExpireAtUtc);
+    }
+}
+
 public sealed class MatchmakingService
 {
     private readonly ConcurrentQueue<MatchmakingTicket> _queue = new();
@@ -408,8 +563,10 @@ public record ReviveRequest(Guid UserId, bool ConsumeSoulStone);
 public record DownedRequest(Guid UserId, int SecondsToRevive);
 public record FinalizePermadeathRequest(DateTime? NowUtc);
 public record MatchmakingRequest(Guid UserId, List<Guid> TeamCharacterIds);
+public record BattleRequest(Guid UserId, Guid CharacterId, string Difficulty);
 
 public record LivePoolDto(Guid CharacterId, string Name, byte Rarity, string BannerTag);
+public record RosterItemDto(Guid CharacterId, string Name, byte Rarity, bool IsUnique, int CurrentHp, bool IsDowned, DateTime? DownedExpireAtUtc);
 public record MatchmakingTicket(Guid TicketId, Guid UserId, int TeamScore, DateTime EnqueuedAtUtc, List<Guid> TeamCharacterIds);
 
 public record PullResult(bool IsSuccess, string Message, Guid? CharacterId, string? CharacterName, byte? Rarity, long Cost, bool IsIdempotentReplay)
@@ -425,4 +582,13 @@ public record ActionResultDto(bool IsSuccess, string Message)
 {
     public static ActionResultDto Success(string message) => new(true, message);
     public static ActionResultDto Fail(string message) => new(false, message);
+}
+
+public record BattleResult(bool IsSuccess, string Status, string Message, int CurrentHp, int Reward, bool IsDowned, DateTime? DownedExpireAtUtc)
+{
+    public static BattleResult Success(string status, string message, int hp, int reward, bool isDowned, DateTime? downedExpireAtUtc)
+        => new(true, status, message, hp, reward, isDowned, downedExpireAtUtc);
+
+    public static BattleResult Fail(string message)
+        => new(false, "ERROR", message, 0, 0, false, null);
 }
