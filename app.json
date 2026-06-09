@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "GPS Card Battler",
+    "slug": "gps-card-battler",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "GPS Card Battler dùng vị trí hiện tại để quét và mở khóa trận đấu gần quái vật."
+      }
+    },
+    "android": {
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
